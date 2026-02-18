@@ -17,6 +17,3 @@ London open setup expert for MT5.
   - Horizontal line on candle low.
   - Vertical marker at candle open time.
   - Vertical marker at candle close time.
-- After levels are set, on each closed candle:
-  - If close is above the high line, draws an up arrow on that candle.
-  - If close is below the low line, draws a down arrow on that candle.

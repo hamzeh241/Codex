@@ -10,21 +10,10 @@ input color InpLowLineColor = clrTomato;         // Low level color
 input color InpVerticalColor = clrDodgerBlue;    // Candle time markers color
 input ENUM_LINE_STYLE InpLineStyle = STYLE_SOLID;
 input int InpLineWidth = 1;
-input color InpBreakoutUpColor = clrLime;      // Breakout up arrow color
-input color InpBreakoutDownColor = clrRed;      // Breakout down arrow color
-input int InpBreakoutArrowSize = 1;             // Arrow line width
 
 string g_prefix;
 datetime g_lastProcessedBar = 0;
 int g_lastProcessedDayOfYear = -1;
-double g_referenceHigh = 0.0;
-double g_referenceLow = 0.0;
-bool g_referenceReady = false;
-
-void CheckBreakoutOnClosedBar(const datetime closedBarTime, const MqlDateTime &closedBarStruct);
-void DrawBreakoutArrow(const datetime candleTime, const bool isUpBreakout);
-bool IsSymbolAllowed(const string chartSymbol, const string allowedSymbols);
-string NormalizeSymbolToken(const string value);
 
 int OnInit()
 {
@@ -69,8 +58,6 @@ void ProcessLondonOpenSetup()
    MqlDateTime closedBarStruct;
    TimeToStruct(closedBarTime, closedBarStruct);
 
-   CheckBreakoutOnClosedBar(closedBarTime, closedBarStruct);
-
    if(closedBarStruct.hour != InpLondonOpenHour || closedBarStruct.min != InpLondonOpenMinute)
       return;
 
@@ -85,9 +72,6 @@ void ProcessLondonOpenSetup()
    DrawLevels(closedBarTime, refHigh, refLow);
    DrawVerticalMarkers(closedBarTime);
 
-   g_referenceHigh = refHigh;
-   g_referenceLow = refLow;
-   g_referenceReady = true;
    g_lastProcessedDayOfYear = closedBarStruct.day_of_year;
 }
 
@@ -132,62 +116,9 @@ void DrawVerticalMarkers(const datetime refCandleTime)
    ObjectSetInteger(0, closeMark, OBJPROP_STYLE, STYLE_DOT);
 }
 
-
-
-void CheckBreakoutOnClosedBar(const datetime closedBarTime, const MqlDateTime &closedBarStruct)
-{
-   if(!g_referenceReady)
-      return;
-
-   if(closedBarStruct.day_of_year != g_lastProcessedDayOfYear)
-      return;
-
-   double closePrice = iClose(_Symbol, InpTimeframe, 1);
-   if(closePrice <= 0)
-      return;
-
-   if(closePrice > g_referenceHigh)
-      DrawBreakoutArrow(closedBarTime, true);
-   else if(closePrice < g_referenceLow)
-      DrawBreakoutArrow(closedBarTime, false);
-}
-
-void DrawBreakoutArrow(const datetime candleTime, const bool isUpBreakout)
-{
-   string side = isUpBreakout ? "UP" : "DOWN";
-   string arrowName = g_prefix + "_BRK_" + side + "_" + IntegerToString((int)candleTime);
-
-   if(ObjectFind(0, arrowName) >= 0)
-      return;
-
-   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   if(point <= 0)
-      point = 0.0001;
-
-   double price = isUpBreakout ? iHigh(_Symbol, InpTimeframe, 1) + (point * 20.0)
-                               : iLow(_Symbol, InpTimeframe, 1) - (point * 20.0);
-
-   int arrowCode = isUpBreakout ? 233 : 234;
-   color arrowColor = isUpBreakout ? InpBreakoutUpColor : InpBreakoutDownColor;
-
-   ObjectCreate(0, arrowName, OBJ_ARROW, 0, candleTime, price);
-   ObjectSetInteger(0, arrowName, OBJPROP_ARROWCODE, arrowCode);
-   ObjectSetInteger(0, arrowName, OBJPROP_COLOR, arrowColor);
-   ObjectSetInteger(0, arrowName, OBJPROP_WIDTH, InpBreakoutArrowSize);
-}
-
-string NormalizeSymbolToken(const string value)
-{
-   string text = value;
-   StringTrimLeft(text);
-   StringTrimRight(text);
-   StringToUpper(text);
-   return(text);
-}
-
 bool IsSymbolAllowed(const string chartSymbol, const string allowedSymbols)
 {
-   string current = NormalizeSymbolToken(chartSymbol);
+   string current = StringUpper(StringTrim(chartSymbol));
    if(current == "")
       return(false);
 
@@ -201,7 +132,7 @@ bool IsSymbolAllowed(const string chartSymbol, const string allowedSymbols)
 
    for(int i = 0; i < count; i++)
    {
-      string token = NormalizeSymbolToken(symbols[i]);
+      string token = StringUpper(StringTrim(symbols[i]));
       if(token == "")
          continue;
 
